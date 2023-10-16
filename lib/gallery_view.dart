@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 
 import 'utils.dart';
 
@@ -26,6 +27,11 @@ class GalleryView extends StatefulWidget {
 
   @override
   State<GalleryView> createState() => _GalleryViewState();
+}
+class RectInfo {
+  final int x, y, width, height;
+
+  RectInfo(this.width, this.height, [this.x = 0, this.y = 0]);
 }
 
 class _GalleryViewState extends State<GalleryView> {
@@ -64,19 +70,19 @@ class _GalleryViewState extends State<GalleryView> {
     return ListView(shrinkWrap: true, children: [
       _image != null
           ? SizedBox(
-              height: 400,
-              width: 400,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  Image.file(_image!),
-                ],
-              ),
-            )
+        height: 400,
+        width: 400,
+        child: Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            Image.file(_image!),
+          ],
+        ),
+      )
           : const Icon(
-              Icons.image,
-              size: 200,
-            ),
+        Icons.image,
+        size: 200,
+      ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: ElevatedButton(
@@ -102,7 +108,8 @@ class _GalleryViewState extends State<GalleryView> {
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
-              '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ?? ''}'),
+              '${_path == null ? '' : 'Image path: $_path'}\n\n${widget.text ??
+                  ''}'),
         ),
     ]);
   }
@@ -115,7 +122,6 @@ class _GalleryViewState extends State<GalleryView> {
     final pickedFile = await _imagePicker?.pickImage(source: source);
     if (pickedFile != null) {
       _processFile(pickedFile.path);
-
     }
   }
 
@@ -125,10 +131,10 @@ class _GalleryViewState extends State<GalleryView> {
     final assets = manifestMap.keys
         .where((String key) => key.contains('images/'))
         .where((String key) =>
-            key.contains('.jpg') ||
-            key.contains('.jpeg') ||
-            key.contains('.png') ||
-            key.contains('.webp'))
+    key.contains('.jpg') ||
+        key.contains('.jpeg') ||
+        key.contains('.png') ||
+        key.contains('.webp'))
         .toList();
 
     showDialog(
@@ -148,7 +154,10 @@ class _GalleryViewState extends State<GalleryView> {
                   ),
                   ConstrainedBox(
                     constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.7),
+                        maxHeight: MediaQuery
+                            .of(context)
+                            .size
+                            .height * 0.7),
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
@@ -177,12 +186,29 @@ class _GalleryViewState extends State<GalleryView> {
         });
   }
 
+
   Future _processFile(String path) async {
+    RectInfo rectInfo = RectInfo(150, 75, 800, 520);
+    await _cropImage(path, rectInfo);
     setState(() {
       _image = File(path);
     });
     _path = path;
     final inputImage = InputImage.fromFilePath(path);
     widget.onImage(inputImage);
+  }
+
+  // crop the image
+  Future<void> _cropImage(String path, [RectInfo? rectInfo]) async {
+    rectInfo ??= RectInfo(50, 50);
+    final i = img.decodeImage(File(path).readAsBytesSync());
+    final cropped = img.copyCrop(
+      i!,
+      width: rectInfo.width,
+      height: rectInfo.height,
+      x: rectInfo.x,
+      y: rectInfo.y,
+    );
+    img.encodeJpgFile(path, cropped);
   }
 }
